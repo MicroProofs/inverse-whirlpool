@@ -1,0 +1,14 @@
+{
+  "preamble": {
+    "title": "micro/inverse-whirlpool",
+    "description": "Aiken contracts for project 'micro/inverse-whirlpool'",
+    "version": "0.0.0",
+    "plutusVersion": "v2",
+    "compiler": {
+      "name": "Aiken",
+      "version": "v1.0.25-alpha+a3f7b48"
+    },
+    "license": "Apache-2.0"
+  },
+  "validators": []
+}
