@@ -9,6 +9,14 @@ pub type Side {
   Right
 }
 
+pub opaque type HashedProof {
+  inner: ByteArray,
+}
+
+fn get_hashed_bytes(p: HashedProof) -> ByteArray {
+  p.inner
+}
+
 // Plus one byte to tell us whether to prepend or append the proof
 pub fn remainder_proofs_size() {
   proof_length + 1
@@ -25,25 +33,6 @@ pub fn convert_bytes_to_remainder_proofs(
   expect bytearray.length(bytes) % remainder_proofs_size() == 0
 
   MerkleRemainderProofs { inner: bytes }
-}
-
-pub fn proofs_contain_side_hash(
-  proofs: MerkleRemainderProofs,
-  side: Side,
-  hashed_side: ByteArray,
-  location: Int,
-) -> Bool {
-  if builtin.index_bytearray(proofs.inner, location) == 0 {
-    and {
-      builtin.slice_bytearray(location + 1, proof_length, proofs.inner) == hashed_side,
-      side == Left,
-    }
-  } else {
-    and {
-      builtin.slice_bytearray(location + 1, proof_length, proofs.inner) == hashed_side,
-      side == Right,
-    }
-  }
 }
 
 pub fn verify_root(
@@ -80,6 +69,63 @@ pub fn do_verify_root(
   }
 }
 
+/// Combine the left and right proofs to get the new combined hash
+pub fn combine_proofs(
+  starting_side: Side,
+  remaining_side_proofs: ByteArray,
+  hashed_left: HashedProof,
+  hashed_right: HashedProof,
+  account_hash: ByteArray,
+  callback,
+) {
+  when starting_side is {
+    Left -> {
+      let left_remaining = remaining_side_proofs |> convert_bytes_to_left_proofs
+
+      let combined_hash =
+        hashed_left.inner
+          |> left_proof_with_hash(left_remaining)
+          |> get_hashed_bytes
+          |> bytearray.concat(hashed_right.inner)
+          |> hash.blake2b_256
+
+      let new_combined_hash =
+        hashed_left.inner
+          |> bytearray.concat(account_hash)
+          |> hash.blake2b_256
+          |> left_proof_with_hash(left_remaining)
+          |> get_hashed_bytes
+          |> bytearray.concat(hashed_right.inner)
+          |> hash.blake2b_256
+
+      callback(combined_hash, new_combined_hash)
+    }
+
+    Right -> {
+      let right_remaining =
+        remaining_side_proofs |> convert_bytes_to_right_proofs
+
+      let combined_hash =
+        hashed_right.inner
+          |> right_proof_with_hash(right_remaining)
+          |> get_hashed_bytes
+          |> bytearray.concat(hashed_left.inner, _)
+          |> hash.blake2b_256
+
+      let new_combined_hash =
+        hashed_right.inner
+          |> bytearray.concat(account_hash, _)
+          |> hash.blake2b_256
+          |> right_proof_with_hash(right_remaining)
+          |> get_hashed_bytes
+          |> bytearray.concat(hashed_left.inner, _)
+          |> hash.blake2b_256
+
+      callback(combined_hash, new_combined_hash)
+    }
+  }
+}
+
 pub opaque type LeftMerkleProofs {
   inner: ByteArray,
 }
@@ -87,22 +133,42 @@ pub opaque type LeftMerkleProofs {
 pub fn convert_bytes_to_left_proofs(bytes: ByteArray) -> LeftMerkleProofs {
   expect bytearray.length(bytes) % proof_length == 0
 
-  expect bytearray.length(bytes) > 0
-
   LeftMerkleProofs { inner: bytes }
 }
 
 // The new item is on the right side of the tree
 // so we prepend only left side proofs
-pub fn left_proof(left_side: LeftMerkleProofs) -> ByteArray {
+pub fn left_proof(left_side: LeftMerkleProofs) -> HashedProof {
   if bytearray.length(left_side.inner) == proof_length {
-    left_side.inner
+    HashedProof(left_side.inner)
   } else {
-    do_left_proof(
-      builtin.slice_bytearray(0, proof_length, left_side.inner),
-      left_side,
-      bytearray.length(left_side.inner),
-      proof_length,
+    HashedProof(
+      do_left_proof(
+        builtin.slice_bytearray(0, proof_length, left_side.inner),
+        left_side,
+        bytearray.length(left_side.inner),
+        proof_length,
+      ),
+    )
+  }
+}
+
+// The new item is on the right side of the tree
+// so we prepend only left side proofs
+pub fn left_proof_with_hash(
+  starting_hash: ByteArray,
+  left_side: LeftMerkleProofs,
+) -> HashedProof {
+  if bytearray.length(left_side.inner) == 0 {
+    HashedProof(starting_hash)
+  } else {
+    HashedProof(
+      do_left_proof(
+        starting_hash,
+        left_side,
+        bytearray.length(left_side.inner),
+        0,
+      ),
     )
   }
 }
@@ -135,22 +201,40 @@ pub opaque type RightMerkleProofs {
 pub fn convert_bytes_to_right_proofs(bytes: ByteArray) -> RightMerkleProofs {
   expect bytearray.length(bytes) % proof_length == 0
 
-  expect bytearray.length(bytes) > 0
-
   RightMerkleProofs { inner: bytes }
 }
 
 // The new item is on the left side of the tree
 // so we append only left side proofs
-pub fn right_proof(right_side: RightMerkleProofs) -> ByteArray {
+pub fn right_proof(right_side: RightMerkleProofs) -> HashedProof {
   if bytearray.length(right_side.inner) == proof_length {
-    right_side.inner
+    HashedProof(right_side.inner)
   } else {
-    do_right_proof(
-      builtin.slice_bytearray(0, proof_length, right_side.inner),
-      right_side,
-      bytearray.length(right_side.inner),
-      proof_length,
+    HashedProof(
+      do_right_proof(
+        builtin.slice_bytearray(0, proof_length, right_side.inner),
+        right_side,
+        bytearray.length(right_side.inner),
+        proof_length,
+      ),
+    )
+  }
+}
+
+pub fn right_proof_with_hash(
+  starting_hash: ByteArray,
+  right_side: RightMerkleProofs,
+) -> HashedProof {
+  if bytearray.length(right_side.inner) == 0 {
+    HashedProof(starting_hash)
+  } else {
+    HashedProof(
+      do_right_proof(
+        starting_hash,
+        right_side,
+        bytearray.length(right_side.inner),
+        0,
+      ),
     )
   }
 }

@@ -13,7 +13,7 @@ pub type MintActions {
   CreateAccount {
     account: Credential,
     starting_side: Side,
-    other_side_location: Int,
+    remaining_side_proofs: ByteArray,
     left_side: ByteArray,
     right_side: ByteArray,
     remaining_proofs: ByteArray,

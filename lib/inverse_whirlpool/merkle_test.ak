@@ -3,9 +3,9 @@ use aiken/fuzz.{and_then, bytearray as byte_fuzzer, map}
 use aiken/hash
 use aiken/list
 use inverse_whirlpool/merkle.{
-  Left, Right, convert_bytes_to_left_proofs, convert_bytes_to_remainder_proofs,
-  convert_bytes_to_right_proofs, left_proof, proofs_contain_side_hash,
-  remainder_proofs_size, right_proof, verify_root,
+  Left, Right, combine_proofs, convert_bytes_to_left_proofs,
+  convert_bytes_to_remainder_proofs, convert_bytes_to_right_proofs, left_proof,
+  right_proof, verify_root,
 }
 use inverse_whirlpool/utils.{list_at}
 
@@ -157,8 +157,6 @@ test merkle_3(bytes_list via get_16_bytearrays()) {
 
   let level_three = merklize_one_level(level_two_modified)
 
-  let level_three_hash = list_at(level_three, 0)
-
   expect [root] = merklize_one_level(level_three)
 
   let left_list =
@@ -167,8 +165,10 @@ test merkle_3(bytes_list via get_16_bytearrays()) {
   let right_list =
     [right_side_closest, right_side_neighbor, level_one_right]
 
+  let remaining_side_proofs = ""
+
   let proof_list =
-    [#[0], level_three_hash]
+    []
 
   let left_proofs =
     list.foldr(left_list, #"", fn(x, acc) { bytearray.concat(x, acc) })
@@ -191,13 +191,19 @@ test merkle_3(bytes_list via get_16_bytearrays()) {
 
   let remaining_proofs = proofs |> convert_bytes_to_remainder_proofs
 
-  let new_hashed_with_right =
-    bytearray.concat(new_item, right_proof_final) |> hash.blake2b_256
+  let
+    _,
+    combined_hash,
+  <-
+    combine_proofs(
+      Right,
+      remaining_side_proofs,
+      left_proof_final,
+      right_proof_final,
+      new_item,
+    )
 
-  and {
-    verify_root(remaining_proofs, new_hashed_with_right, root),
-    proofs_contain_side_hash(remaining_proofs, Left, left_proof_final, 0),
-  }
+  verify_root(remaining_proofs, combined_hash, root)
 }
 
 fn merkle_4_setup() {
@@ -255,8 +261,6 @@ fn merkle_4_setup() {
 
   let level_three = merklize_one_level(level_two_modified)
 
-  let level_three_hash = list_at(level_three, 0)
-
   expect [root] = merklize_one_level(level_three)
 
   let left_list =
@@ -266,7 +270,7 @@ fn merkle_4_setup() {
     [right_side_closest, right_side_neighbor, level_one_right]
 
   let proof_list =
-    [#[0], level_three_hash]
+    []
 
   let left_proofs =
     list.foldr(left_list, #"", fn(x, acc) { bytearray.concat(x, acc) })
@@ -283,6 +287,8 @@ fn merkle_4_setup() {
 test merkle_4() {
   let left_proofs, right_proofs, proofs, new_item, root <- merkle_4_setup()()
 
+  let remaining_side_proofs = ""
+
   let left_proof_final =
     left_proofs
       |> convert_bytes_to_left_proofs
@@ -295,13 +301,19 @@ test merkle_4() {
 
   let remaining_proofs = proofs |> convert_bytes_to_remainder_proofs
 
-  let new_hashed_with_right =
-    bytearray.concat(new_item, right_proof_final) |> hash.blake2b_256
+  let
+    _,
+    combined_hash,
+  <-
+    combine_proofs(
+      Right,
+      remaining_side_proofs,
+      left_proof_final,
+      right_proof_final,
+      new_item,
+    )
 
-  and {
-    verify_root(remaining_proofs, new_hashed_with_right, root),
-    proofs_contain_side_hash(remaining_proofs, Left, left_proof_final, 0),
-  }
+  verify_root(remaining_proofs, combined_hash, root)?
 }
 
 fn merkle_5_setup() {
@@ -377,11 +389,9 @@ fn merkle_5_setup() {
 
   let level_three_right = list_at(level_three, 3)
 
-  let level_three_hash = list_at(level_three, 0)
+  let remaining_left_side_proofs = list_at(level_three, 0)
 
   let level_four = merklize_one_level(level_three)
-
-  let level_four_hash = list_at(level_four, 1)
 
   expect [root] = merklize_one_level(level_four)
 
@@ -398,7 +408,7 @@ fn merkle_5_setup() {
     ]
 
   let proof_list =
-    [#[0], level_three_hash, #[1], level_four_hash]
+    []
 
   let left_proofs =
     list.foldr(left_list, #"", fn(x, acc) { bytearray.concat(x, acc) })
@@ -409,11 +419,27 @@ fn merkle_5_setup() {
   let proofs =
     list.foldr(proof_list, #"", fn(x, acc) { bytearray.concat(x, acc) })
 
-  fn(g) { g(left_proofs, right_proofs, proofs, new_item, root) }
+  fn(g) {
+    g(
+      left_proofs,
+      right_proofs,
+      remaining_left_side_proofs,
+      proofs,
+      new_item,
+      root,
+    )
+  }
 }
 
 test merkle_5() {
-  let left_proofs, right_proofs, proofs, new_item, root <- merkle_5_setup()()
+  let
+    left_proofs,
+    right_proofs,
+    remaining_left_side_proofs,
+    proofs,
+    new_item,
+    root,
+  <- merkle_5_setup()()
 
   let left_proof_final =
     left_proofs
@@ -427,16 +453,17 @@ test merkle_5() {
 
   let remaining_proofs = proofs |> convert_bytes_to_remainder_proofs
 
-  let new_hashed_with_right =
-    bytearray.concat(left_proof_final, new_item) |> hash.blake2b_256
-
-  and {
-    verify_root(remaining_proofs, new_hashed_with_right, root)?,
-    proofs_contain_side_hash(
-      remaining_proofs,
-      Right,
+  let
+    _,
+    combined_hash,
+  <-
+    combine_proofs(
+      Left,
+      remaining_left_side_proofs,
+      left_proof_final,
       right_proof_final,
-      remainder_proofs_size(),
-    )?,
-  }
+      new_item,
+    )
+
+  verify_root(remaining_proofs, combined_hash, root)
 }

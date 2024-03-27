@@ -1,5 +1,4 @@
 use aiken/builtin
-use aiken/bytearray
 use aiken/dict
 use aiken/hash
 use aiken/list
@@ -11,10 +10,11 @@ use aiken/transaction/credential.{
   Address, Inline, ScriptCredential, VerificationKeyCredential,
 }
 use aiken/transaction/value
+use inverse_whirlpool/consts.{merkle_lower_bound}
 use inverse_whirlpool/merkle.{
-  Left, Right, convert_bytes_to_left_proofs, convert_bytes_to_remainder_proofs,
-  convert_bytes_to_right_proofs, get_left_leaf, get_right_leaf, left_proof,
-  proofs_contain_side_hash, remainder_proofs_size, right_proof, verify_root,
+  combine_proofs, convert_bytes_to_left_proofs,
+  convert_bytes_to_remainder_proofs, convert_bytes_to_right_proofs,
+  get_left_leaf, get_right_leaf, left_proof, right_proof, verify_root,
 }
 use inverse_whirlpool/utils.{get_inline_datum, list_at, skip_to}
 use inverse_whirlpool/validation.{
@@ -39,7 +39,7 @@ validator(init_ref: OutputReference) {
       CreateAccount {
         account,
         starting_side,
-        other_side_location,
+        remaining_side_proofs,
         left_side,
         right_side,
         remaining_proofs,
@@ -66,48 +66,6 @@ validator(init_ref: OutputReference) {
 
         let hashed_right = right_proofs |> right_proof
 
-        let callback =
-          //Combine the left and right proofs to get the new combined hash
-          when starting_side is {
-            Left -> {
-              let right_is_in_remaining_proofs =
-                proofs_contain_side_hash(
-                  remaining_proofs,
-                  Right,
-                  hashed_right,
-                  other_side_location,
-                )
-
-              let new_hashed_left =
-                hashed_left
-                  |> bytearray.concat(account_hash)
-                  |> hash.blake2b_256
-
-              fn(g) {
-                g(right_is_in_remaining_proofs, hashed_left, new_hashed_left)
-              }
-            }
-
-            Right -> {
-              let left_is_in_remaining_proofs =
-                proofs_contain_side_hash(
-                  remaining_proofs,
-                  Left,
-                  hashed_left,
-                  other_side_location,
-                )
-
-              let new_hashed_right =
-                hashed_right
-                  |> bytearray.concat(account_hash, _)
-                  |> hash.blake2b_256
-
-              fn(g) {
-                g(left_is_in_remaining_proofs, hashed_right, new_hashed_right)
-              }
-            }
-          }
-        // Validate only 1 input from this script in a tx
         expect Some(merkle_input) =
           tx.inputs
             |> list.find(fn(input) { input.output.address == expected_address })
@@ -148,23 +106,38 @@ validator(init_ref: OutputReference) {
             |> value.tokens(own_policy)
             |> dict.to_list
 
-        let proof_valid, starting_hash, new_starting_hash <- callback
+        let
+          starting_hash,
+          new_starting_hash,
+        <-
+          combine_proofs(
+            starting_side,
+            remaining_side_proofs,
+            hashed_left,
+            hashed_right,
+            account_hash,
+          )
 
         and {
+          // Check valid bounds
           builtin.less_than_bytearray(left_leaf, account_hash),
           builtin.less_than_bytearray(account_hash, right_leaf),
-          proof_valid,
+          builtin.less_than_equals_bytearray(merkle_lower_bound, left_leaf),
+          builtin.less_than_bytearray(merkle_lower_bound, right_leaf),
+          // Verify old and new roots
           verify_root(remaining_proofs, starting_hash, input_root),
           verify_root(remaining_proofs, new_starting_hash, output_root),
+          // Verify utxo is preserved
           value.without_lovelace(input_value) == expected_value,
           output_address == expected_address,
           value.without_lovelace(output_value) == expected_value,
           own_hash == own_policy,
+          // Verify account token is created
           minted_token == account_hash,
+          // Verify account utxo is created
           account_address.payment_credential == ScriptCredential(own_policy),
           value.without_lovelace(account_value) == expected_account_value,
           account_data == InlineDatum(Account(account, 0)),
-          other_side_location % remainder_proofs_size() == 0,
         }
       }
 
