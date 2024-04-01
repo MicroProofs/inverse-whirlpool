@@ -1,7 +1,11 @@
+use aiken/builtin
 use aiken/bytearray
-use aiken/fuzz.{and_then, bytearray as byte_fuzzer, map}
+use aiken/cbor
+use aiken/fuzz.{and_then, bytearray as byte_fuzzer, int_between, label, map}
 use aiken/hash
 use aiken/list
+use aiken/math
+use aiken/string
 use inverse_whirlpool/merkle.{
   Left, Right, combine_proofs, convert_bytes_to_left_proofs,
   convert_bytes_to_remainder_proofs, convert_bytes_to_right_proofs, left_proof,
@@ -28,6 +32,34 @@ fn get_16_bytearrays() -> Fuzzer<List<ByteArray>> {
   let p <- map(byte_fuzzer())
 
   [a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p]
+}
+
+fn get_128_bytearrays() -> Fuzzer<List<ByteArray>> {
+  let a1 <- and_then(get_16_bytearrays())
+  let a2 <- and_then(get_16_bytearrays())
+  let a3 <- and_then(get_16_bytearrays())
+  let a4 <- and_then(get_16_bytearrays())
+  let a5 <- and_then(get_16_bytearrays())
+  let a6 <- and_then(get_16_bytearrays())
+  let a7 <- and_then(get_16_bytearrays())
+  let a8 <- map(get_16_bytearrays())
+
+  a1
+    |> list.concat(a2)
+    |> list.concat(a3)
+    |> list.concat(a4)
+    |> list.concat(a5)
+    |> list.concat(a6)
+    |> list.concat(a7)
+    |> list.concat(a8)
+}
+
+fn get_index_and_level_in_bytearray_list() -> Fuzzer<(Int, List<ByteArray>)> {
+  let bytes_list <- and_then(get_128_bytearrays())
+
+  let index <- map(int_between(23, 99))
+
+  (index, bytes_list)
 }
 
 // assume list is even
@@ -466,4 +498,87 @@ test merkle_5() {
     )
 
   verify_root(remaining_proofs, combined_hash, root)
+}
+
+fn fold2_items(
+  l: List<a>,
+  default: b,
+  f: fn(a, a, b) -> b,
+  f1: fn(a, b) -> b,
+) -> b {
+  when l is {
+    [] -> default
+    [x, ..rest] ->
+      when rest is {
+        [] -> f1(x, default)
+        [y, ..rest] -> f(x, y, fold2_items(rest, default, f, f1))
+      }
+  }
+}
+
+fn sparse_merkelize_level(
+  l: List<(Int, ByteArray)>,
+) -> (Int, List<(Int, ByteArray)>) {
+  expect Some(smallest_distance) =
+    l
+      |> fold2_items(
+          None,
+          fn(x, y, acc) {
+            let distance = y.1st - x.1st
+            when acc is {
+              None -> Some(distance)
+              Some(d) -> Some(math.min(d, distance))
+            }
+          },
+          fn(_x, acc) { acc },
+        )
+
+  let divisor = math.pow2(math.log(smallest_distance, 2)) * 2
+
+  let new_list =
+    l
+      |> list.foldr(
+          [],
+          fn(x, acc: List<(Int, ByteArray)>) {
+            when acc is {
+              [] ->
+                [(x.1st / divisor, x.2nd)]
+              [y, ..rest] -> {
+                let x_d = x.1st / divisor
+                let y_d = y.1st
+
+                if x_d == y_d {
+                  let new_bytes =
+                    bytearray.concat(x.2nd, y.2nd) |> hash.blake2b_256
+                  [(x_d, new_bytes), ..rest]
+                } else {
+                  [(x_d, x.2nd), ..acc]
+                }
+              }
+            }
+          },
+        )
+
+  (divisor, new_list)
+}
+
+test merkle7(thing via get_index_and_level_in_bytearray_list()) {
+  let (index, bytes_list) = thing
+
+  let map_list =
+    bytes_list
+      |> list.sort(bytearray.compare)
+      |> list.map(fn(x) { (builtin.bytearray_to_integer(True, x), x) })
+      |> list.unique
+
+  let item = list_at(map_list, index)
+
+  let left =
+    [list_at(map_list, index - 1)]
+  let right =
+    [list_at(map_list, index + 1)]
+
+  let (divisor, level_one) = sparse_merkelize_level(map_list)
+
+  True
 }

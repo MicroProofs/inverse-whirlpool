@@ -210,10 +210,8 @@ validator(init_ref: OutputReference) {
         expect Spend(own_ref) = ctx.purpose
 
         expect Some(own_script_hash) =
-          list.find(
-            ctx.transaction.inputs,
-            fn(input) { input.output_reference == own_ref },
-          )
+          ctx.transaction.inputs
+            |> list.find(fn(input) { input.output_reference == own_ref })
             |> option.map(
                 fn(input) {
                   when input.output.address.payment_credential is {
