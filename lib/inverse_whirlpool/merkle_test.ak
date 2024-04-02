@@ -562,6 +562,79 @@ fn sparse_merkelize_level(
   (divisor, new_list)
 }
 
+fn get_index(l: List<(Int, a)>, key: Int, current_index: Int) -> Int {
+  expect [(key2, _), ..rest] = l
+
+  if key == key2 {
+    current_index
+  } else {
+    get_index(rest, key, current_index + 1)
+  }
+}
+
+fn get_proofs(map_list, index, item, left, right) {
+  todo
+}
+
+fn do_get_proofs(
+  map_list: List<(Int, ByteArray)>,
+  index: Int,
+  item: (Int, ByteArray),
+  left: List<ByteArray>,
+  right: List<ByteArray>,
+  remaining_side,
+  remaining_proofs,
+  left_final,
+  right_final,
+  remaining_side_final,
+  side_final,
+) {
+  let (divisor, level_one) = sparse_merkelize_level(map_list)
+
+  let item_key = item.1st / divisor
+
+  let new_item_index = get_index(level_one, item_key, 0)
+
+  let new_item = list_at(level_one, new_item_index)
+
+  if new_item.2nd == item.2nd {
+    let new_left = list_at(level_one, new_item_index - 1)
+    let new_right = list_at(level_one, new_item_index + 1)
+
+    let left =
+      if new_left.2nd == list_at(left, 0) {
+        left
+      } else {
+        let thing = list_at(map_list, index - 2)
+        [thing.2nd, ..left]
+      }
+
+    let right =
+      if new_right.2nd == list_at(right, 0) {
+        right
+      } else {
+        let thing = list_at(map_list, index + 2)
+        [thing.2nd, ..right]
+      }
+
+    do_get_proofs(
+      level_one,
+      new_item_index,
+      new_item,
+      left,
+      right,
+      remaining_side,
+      remaining_proofs,
+      left_final,
+      right_final,
+      remaining_side_final,
+      side_final,
+    )
+  } else {
+    todo
+  }
+}
+
 test merkle7(thing via get_index_and_level_in_bytearray_list()) {
   let (index, bytes_list) = thing
 
@@ -573,10 +646,12 @@ test merkle7(thing via get_index_and_level_in_bytearray_list()) {
 
   let item = list_at(map_list, index)
 
+  let left = list_at(map_list, index - 1)
   let left =
-    [list_at(map_list, index - 1)]
+    [left.2nd]
+  let right = list_at(map_list, index + 1)
   let right =
-    [list_at(map_list, index + 1)]
+    [right.2nd]
 
   let (divisor, level_one) = sparse_merkelize_level(map_list)
 
