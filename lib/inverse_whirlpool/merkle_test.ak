@@ -589,17 +589,17 @@ fn do_get_proofs(
   remaining_side_final,
   side_final,
 ) {
-  let (divisor, level_one) = sparse_merkelize_level(map_list)
+  let (divisor, next_level) = sparse_merkelize_level(map_list)
 
   let item_key = item.1st / divisor
 
-  let new_item_index = get_index(level_one, item_key, 0)
+  let new_item_index = get_index(next_level, item_key, 0)
 
-  let new_item = list_at(level_one, new_item_index)
+  let new_item = list_at(next_level, new_item_index)
 
   if new_item.2nd == item.2nd {
-    let new_left = list_at(level_one, new_item_index - 1)
-    let new_right = list_at(level_one, new_item_index + 1)
+    let new_left = list_at(next_level, new_item_index - 1)
+    let new_right = list_at(next_level, new_item_index + 1)
 
     let left =
       if new_left.2nd == list_at(left, 0) {
@@ -618,7 +618,7 @@ fn do_get_proofs(
       }
 
     do_get_proofs(
-      level_one,
+      next_level,
       new_item_index,
       new_item,
       left,
@@ -635,25 +635,22 @@ fn do_get_proofs(
   }
 }
 
-test merkle7(thing via get_index_and_level_in_bytearray_list()) {
-  let (index, bytes_list) = thing
+test merkle7() {
+  // let (index, bytes_list) = thing
 
-  let map_list =
-    bytes_list
-      |> list.sort(bytearray.compare)
-      |> list.map(fn(x) { (builtin.bytearray_to_integer(True, x), x) })
-      |> list.unique
+  // let map_list =
+  //   bytes_list
+  //     |> list.sort(bytearray.compare)
+  //     |> list.map(fn(x) { (builtin.bytearray_to_integer(True, x), x) })
+  //     |> list.unique
 
-  let item = list_at(map_list, index)
-
-  let left = list_at(map_list, index - 1)
-  let left =
-    [left.2nd]
-  let right = list_at(map_list, index + 1)
-  let right =
-    [right.2nd]
-
-  let (divisor, level_one) = sparse_merkelize_level(map_list)
-
+  // let item = list_at(map_list, index)
+  // let left = list_at(map_list, index - 1)
+  // let left =
+  //   [left.2nd]
+  // let right = list_at(map_list, index + 1)
+  // let right =
+  //   [right.2nd]
+  // let (divisor, level_one) = sparse_merkelize_level(map_list)
   True
 }
