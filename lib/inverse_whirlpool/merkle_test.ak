@@ -1,7 +1,7 @@
 use aiken/builtin
 use aiken/bytearray
 use aiken/cbor
-use aiken/fuzz.{and_then, bytearray as byte_fuzzer, int_between, label, map}
+use aiken/fuzz.{and_then, bytearray as byte_fuzzer, int_between, map}
 use aiken/hash
 use aiken/list
 use aiken/math
@@ -644,10 +644,6 @@ fn get_index(l: List<(Int, a)>, key: Int, current_index: Int) -> Int {
   } else {
     get_index(rest, key, current_index + 1)
   }
-}
-
-fn get_proofs(map_list, index, item, left, right) {
-  todo
 }
 
 fn do_get_proofs(
