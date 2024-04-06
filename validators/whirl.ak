@@ -3,6 +3,11 @@ use aiken/dict
 use aiken/hash
 use aiken/list
 use aiken/option
+use aiken/sparse_merkle_tree.{verify_added_member}
+use aiken/sparse_merkle_tree/merkle.{
+  convert_bytes_to_left_proofs, convert_bytes_to_remainder_proofs,
+  convert_bytes_to_right_proofs,
+}
 use aiken/transaction.{
   InlineDatum, Mint, Output, OutputReference, ScriptContext, Spend,
 }
@@ -10,12 +15,6 @@ use aiken/transaction/credential.{
   Address, Inline, ScriptCredential, VerificationKeyCredential,
 }
 use aiken/transaction/value
-use inverse_whirlpool/consts.{merkle_lower_bound}
-use inverse_whirlpool/merkle.{
-  combine_proofs, convert_bytes_to_left_proofs,
-  convert_bytes_to_remainder_proofs, convert_bytes_to_right_proofs,
-  get_left_leaf, get_right_leaf, left_proof, right_proof, verify_root,
-}
 use inverse_whirlpool/utils.{get_inline_datum, list_at, skip_to}
 use inverse_whirlpool/validation.{
   Account, BurnAccount, CreateAccount, DestroyAccount, IncrementAccount,
@@ -54,17 +53,6 @@ validator(init_ref: OutputReference) {
 
         let remaining_proofs =
           remaining_proofs |> convert_bytes_to_remainder_proofs
-
-        // Get left and right leaf to ensure the new item
-        // is between 2 existing leafs in the tree
-        let left_leaf = left_proofs |> get_left_leaf
-
-        let right_leaf = right_proofs |> get_right_leaf
-
-        // Hash the left and right proofs
-        let hashed_left = left_proofs |> left_proof
-
-        let hashed_right = right_proofs |> right_proof
 
         expect Some(merkle_input) =
           tx.inputs
@@ -106,27 +94,18 @@ validator(init_ref: OutputReference) {
             |> value.tokens(own_policy)
             |> dict.to_list
 
-        let
-          starting_hash,
-          new_starting_hash,
-        <-
-          combine_proofs(
-            starting_side,
-            remaining_side_proofs,
-            hashed_left,
-            hashed_right,
-            account_hash,
-          )
-
         and {
-          // Check valid bounds
-          builtin.less_than_bytearray(left_leaf, account_hash),
-          builtin.less_than_bytearray(account_hash, right_leaf),
-          builtin.less_than_equals_bytearray(merkle_lower_bound, left_leaf),
-          builtin.less_than_bytearray(merkle_lower_bound, right_leaf),
-          // Verify old and new roots
-          verify_root(remaining_proofs, starting_hash, input_root),
-          verify_root(remaining_proofs, new_starting_hash, output_root),
+          // Verify new and old merkle roots
+          verify_added_member(
+            account_hash,
+            starting_side,
+            left_proofs,
+            right_proofs,
+            remaining_side_proofs,
+            remaining_proofs,
+            input_root,
+            output_root,
+          ),
           // Verify utxo is preserved
           value.without_lovelace(input_value) == expected_value,
           output_address == expected_address,

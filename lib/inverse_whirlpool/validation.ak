@@ -1,12 +1,10 @@
-use aiken/bytearray
 use aiken/dict
-use aiken/hash
 use aiken/list
+use aiken/sparse_merkle_tree.{init_root}
+use aiken/sparse_merkle_tree/merkle.{Side}
 use aiken/transaction.{InlineDatum, Output, OutputReference, Transaction}
 use aiken/transaction/credential.{Address, Credential}
 use aiken/transaction/value.{PolicyId, Value}
-use inverse_whirlpool/consts.{merkle_lower_bound, merkle_upper_bound}
-use inverse_whirlpool/merkle.{Side}
 
 pub type MintActions {
   InitMerkle
@@ -47,9 +45,7 @@ pub fn init_merkle(
     tx.inputs |> list.find(fn(i) { i.output_reference == init_ref })
 
   let expected_data =
-    merkle_lower_bound
-      |> bytearray.concat(merkle_upper_bound)
-      |> hash.blake2b_256
+    init_root()
       |> Merkle(own_policy)
       |> InlineDatum
 

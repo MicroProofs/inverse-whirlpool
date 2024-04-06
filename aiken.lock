@@ -3,7 +3,7 @@
 
 [[requirements]]
 name = "aiken-lang/stdlib"
-version = "1.7.0"
+version = "1.8.0"
 source = "github"
 
 [[requirements]]
@@ -11,9 +11,14 @@ name = "aiken-lang/fuzz"
 version = "main"
 source = "github"
 
+[[requirements]]
+name = "aiken-lang/sparse-merkle-tree"
+version = "main"
+source = "github"
+
 [[packages]]
 name = "aiken-lang/stdlib"
-version = "1.7.0"
+version = "1.8.0"
 requirements = []
 source = "github"
 
@@ -23,5 +28,12 @@ version = "main"
 requirements = []
 source = "github"
 
+[[packages]]
+name = "aiken-lang/sparse-merkle-tree"
+version = "main"
+requirements = []
+source = "github"
+
 [etags]
-"aiken-lang/fuzz@main" = [{ secs_since_epoch = 1712259369, nanos_since_epoch = 388733000 }, "d7aadd4a9b25589bd6d5e3bbedcd809cdf97fe3eddb365cf89cd6ac6bc829643"]
+"aiken-lang/fuzz@main" = [{ secs_since_epoch = 1712425937, nanos_since_epoch = 932619000 }, "d7aadd4a9b25589bd6d5e3bbedcd809cdf97fe3eddb365cf89cd6ac6bc829643"]
+"aiken-lang/sparse-merkle-tree@main" = [{ secs_since_epoch = 1712425938, nanos_since_epoch = 11398000 }, "0e2d3528ea6930fa77a2a47bcf9a2be2a65016b664b7963bd8487d0c1adde650"]

@@ -10,10 +10,15 @@ platform = "github"
 
 [[dependencies]]
 name = "aiken-lang/stdlib"
-version = "1.7.0"
+version = "1.8.0"
 source = "github"
 
 [[dependencies]]
 name = "aiken-lang/fuzz"
+version = "main"
+source = "github"
+
+[[dependencies]]
+name = "aiken-lang/sparse-merkle-tree"
 version = "main"
 source = "github"
