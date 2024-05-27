@@ -1,7 +1,7 @@
 use aiken/dict
 use aiken/list
-use aiken/sparse_merkle_tree.{init_root}
-use aiken/sparse_merkle_tree/merkle.{Side}
+use aiken/sparse_merkle_tree/merkle_blake256.{MerkleProofBlock}
+use aiken/sparse_merkle_tree_blake256.{init_root}
 use aiken/transaction.{InlineDatum, Output, OutputReference, Transaction}
 use aiken/transaction/credential.{Address, Credential}
 use aiken/transaction/value.{PolicyId, Value}
@@ -10,11 +10,7 @@ pub type MintActions {
   InitMerkle
   CreateAccount {
     account: Credential,
-    starting_side: Side,
-    remaining_side_proofs: ByteArray,
-    left_side: ByteArray,
-    right_side: ByteArray,
-    remaining_proofs: ByteArray,
+    merkle_proof_block: MerkleProofBlock<Credential>,
     output_index: Int,
   }
   BurnAccount

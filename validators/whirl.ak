@@ -3,11 +3,7 @@ use aiken/dict
 use aiken/hash
 use aiken/list
 use aiken/option
-use aiken/sparse_merkle_tree.{verify_added_member}
-use aiken/sparse_merkle_tree/merkle.{
-  convert_bytes_to_left_proofs, convert_bytes_to_remainder_proofs,
-  convert_bytes_to_right_proofs,
-}
+use aiken/sparse_merkle_tree_blake256.{verify_added_member}
 use aiken/transaction.{
   InlineDatum, Mint, Output, OutputReference, ScriptContext, Spend,
 }
@@ -35,24 +31,8 @@ validator(init_ref: OutputReference) {
       InitMerkle ->
         init_merkle(init_ref, tx, own_policy, expected_address, expected_value)
 
-      CreateAccount {
-        account,
-        starting_side,
-        remaining_side_proofs,
-        left_side,
-        right_side,
-        remaining_proofs,
-        output_index,
-      } -> {
+      CreateAccount { account, merkle_proof_block, output_index } -> {
         let account_hash = account |> builtin.serialise_data |> hash.blake2b_256
-
-        // Convert bytearrays to proof opaque types
-        let left_proofs = left_side |> convert_bytes_to_left_proofs
-
-        let right_proofs = right_side |> convert_bytes_to_right_proofs
-
-        let remaining_proofs =
-          remaining_proofs |> convert_bytes_to_remainder_proofs
 
         expect Some(merkle_input) =
           tx.inputs
@@ -97,12 +77,9 @@ validator(init_ref: OutputReference) {
         and {
           // Verify new and old merkle roots
           verify_added_member(
-            account_hash,
-            starting_side,
-            left_proofs,
-            right_proofs,
-            remaining_side_proofs,
-            remaining_proofs,
+            account,
+            fn(a) { builtin.serialise_data(a) },
+            merkle_proof_block,
             input_root,
             output_root,
           ),
