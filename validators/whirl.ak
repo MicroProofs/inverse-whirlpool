@@ -93,7 +93,7 @@ validator(init_ref: OutputReference) {
           // Verify account utxo is created
           account_address.payment_credential == ScriptCredential(own_policy),
           value.without_lovelace(account_value) == expected_account_value,
-          account_data == InlineDatum(Account(account, 0)),
+          account_data == InlineDatum(Account(account, 1)),
         }
       }
 
