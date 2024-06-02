@@ -1,11 +1,7 @@
-
-use inverse_whirlpool/checks.{
-  has_unique_input, valid_mint
-}
-use inverse_whirlpool/tests/data.{
-  sample_inputs, sample_output_ref, sample_token
-}
 use aiken/transaction/value.{from_asset}
+use inverse_whirlpool/checks.{has_unique_input, valid_mint}
+use inverse_whirlpool/tests/data.{sample_inputs,
+  sample_output_ref, sample_token}
 
 test valid_utxo_input_param() {
   // Make sure the input is unique
@@ -33,69 +29,42 @@ test valid_mint_1() {
   let some_enforced_token_name = "UnitTestToken"
   let some_quantity = 1
   let some_token = sample_token(some_quantity, some_enforced_token_name)
-  let some_mint = from_asset(
-    some_token.policy,
-    some_token.asset_name,
-    some_token.quantity
-    )
+  let some_mint =
+    from_asset(some_token.policy, some_token.asset_name, some_token.quantity)
   valid_mint(
     some_mint,
     some_token.policy,
     some_enforced_token_name,
-    some_quantity
+    some_quantity,
   )
 }
 
 test invalid_mint_1() {
-  /// Incorrect quantity
   let some_enforced_token_name = "UnitTestToken"
   let some_quantity = 1
   let some_token = sample_token(some_quantity, some_enforced_token_name)
-  let some_mint = from_asset(
-    some_token.policy,
-    some_token.asset_name,
-    some_token.quantity
-    )
-  !valid_mint(
-    some_mint,
-    some_token.policy,
-    some_enforced_token_name,
-    2
-  )
+  let some_mint =
+    from_asset(some_token.policy, some_token.asset_name, some_token.quantity)
+  !valid_mint(some_mint, some_token.policy, some_enforced_token_name, 2)
 }
 
+/// Incorrect quantity
 test invalid_mint_2() {
-  /// Incorrect asset name
   let some_enforced_token_name = "UnitTestToken"
   let some_quantity = 1
   let some_token = sample_token(some_quantity, some_enforced_token_name)
-  let some_mint = from_asset(
-    some_token.policy,
-    some_token.asset_name,
-    some_token.quantity
-    )
-  !valid_mint(
-    some_mint,
-    some_token.policy,
-    "BadTokenName",
-    some_quantity
-  )
+  let some_mint =
+    from_asset(some_token.policy, some_token.asset_name, some_token.quantity)
+  !valid_mint(some_mint, some_token.policy, "BadTokenName", some_quantity)
 }
 
+/// Incorrect asset name
 test invalid_mint_3() fail {
-  /// Incorrect policy id
   let some_enforced_token_name = "UnitTestToken"
   let some_quantity = 1
   let some_token = sample_token(some_quantity, some_enforced_token_name)
-  let some_mint = from_asset(
-    some_token.policy,
-    some_token.asset_name,
-    some_token.quantity
-    )
-  !valid_mint(
-    some_mint,
-    #"000000",
-    some_enforced_token_name,
-    some_quantity
-  )
+  let some_mint =
+    from_asset(some_token.policy, some_token.asset_name, some_token.quantity)
+  !valid_mint(some_mint, #"000000", some_enforced_token_name, some_quantity)
 }
+/// Incorrect policy id

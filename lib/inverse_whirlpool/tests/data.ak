@@ -1,11 +1,11 @@
+use aiken/interval.{Finite, Interval, IntervalBound}
 use aiken/list
 use aiken/transaction.{
   InlineDatum, Input, Output, OutputReference, TransactionId, ValidityRange,
 }
 use aiken/transaction/credential.{from_verification_key}
 use aiken/transaction/value.{flatten, from_asset}
-use aiken/interval.{Finite, Interval, IntervalBound}
-use inverse_whirlpool/types/data.{State, VKeyHash, Asset}
+use inverse_whirlpool/types/data.{Asset, State, VKeyHash}
 
 pub fn sample_token(quantity: Int, name: ByteArray) -> Asset {
   Asset {
@@ -25,9 +25,7 @@ pub fn sample_owner(indx: Int) -> VKeyHash {
 }
 
 pub fn sample_datum(number: Int) -> State {
-  State {
-    mint: number,
-  }
+  State { mint: number }
 }
 
 pub fn sample_output(owner_indx: Int, asset: Asset) -> Output {
@@ -64,9 +62,8 @@ pub fn sample_token_claims(
 }
 
 pub fn sample_date_range(a: Int, b: Int) -> ValidityRange {
-  Interval
-    { 
-      lower_bound: IntervalBound { bound_type: Finite(a), is_inclusive: True },
-      upper_bound: IntervalBound { bound_type: Finite(b), is_inclusive: True }
-    }
+  Interval {
+    lower_bound: IntervalBound { bound_type: Finite(a), is_inclusive: True },
+    upper_bound: IntervalBound { bound_type: Finite(b), is_inclusive: True },
+  }
 }
