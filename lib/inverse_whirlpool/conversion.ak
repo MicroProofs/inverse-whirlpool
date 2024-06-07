@@ -75,10 +75,21 @@ fn convert_fee(fee: Value) -> ByteArray {
   value.lovelace_of(fee) |> builtin.serialise_data
 }
 
-// fn convert_extra_signatories(signatures: List<ByteArray>) -> ByteArray {
-//     let (length, bytes) =
-//       list.foldl()
-// }
+fn convert_extra_signatories(signatures: List<ByteArray>) -> ByteArray {
+  let (length, bytes) =
+    list.foldl(
+      signatures,
+      (0, ""),
+      fn(signature, acc) {
+        (
+          acc.1st + 1,
+          bytearray.concat(builtin.serialise_data(signature))
+          |> bytearray.concat(acc.2nd)
+        )
+      },
+    )
+  #"82" |> bytearray.concat(bytes)
+}
 
 fn convert_datum(datum: Datum) -> (Int, ByteArray) {
   (add_datum, datum_bytes) =
@@ -87,7 +98,6 @@ fn convert_datum(datum: Datum) -> (Int, ByteArray) {
       DatumHash(datum_hash) -> (1, datum_hash)
       InlineDatum(datum_bytes) -> (1, builtin.serialise_data(datum_bytes))
     }
-
 }
 
 fn convert_value(assets: Value) -> ByteArray {
