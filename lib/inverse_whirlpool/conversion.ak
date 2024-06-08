@@ -56,7 +56,7 @@ pub fn convert_outputs(outputs: List<Output>) -> ByteArray {
         let (add_datum, datum_bytes) = convert_datum(datum)
         (
           acc.1st + 1,
-          bytearray.cons_bytearray( 130 + add_datum, convert_address(address))
+          builtin.cons_bytearray( 130 + add_datum, convert_address(address))
             |> bytearray.concat(convert_value(value))
             |> bytearray.concat(datum_bytes)
             |> bytearray.concat(acc.2nd),
@@ -83,21 +83,23 @@ fn convert_extra_signatories(signatures: List<ByteArray>) -> ByteArray {
       fn(signature, acc) {
         (
           acc.1st + 1,
-          bytearray.concat(builtin.serialise_data(signature))
-          |> bytearray.concat(acc.2nd)
+          bytearray.concat(builtin.serialise_data(signature), acc.2nd)
         )
       },
     )
-  #"82" |> bytearray.concat(bytes)
+  if length <= 23 {
+    builtin.cons_bytearray(128 + length, bytes)
+  } else {
+    bytearray.concat(#"9f", bytes) |> bytearray.concat(#"ff")
+  }
 }
 
 fn convert_datum(datum: Datum) -> (Int, ByteArray) {
-  (add_datum, datum_bytes) =
-    when datum is {
-      NoDatum -> (0, "")
-      DatumHash(datum_hash) -> (1, datum_hash)
-      InlineDatum(datum_bytes) -> (1, builtin.serialise_data(datum_bytes))
-    }
+  when datum is {
+    NoDatum -> (0, "")
+    DatumHash(datum_hash) -> (1, datum_hash)
+    InlineDatum(datum_bytes) -> (1, builtin.serialise_data(datum_bytes))
+  }
 }
 
 fn convert_value(assets: Value) -> ByteArray {
