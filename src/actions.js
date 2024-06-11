@@ -1,5 +1,7 @@
-import contract from "@/plutus.json"
-import {getValidators, lucidAPI} from "@/src/util.js"
+// import type {contract} from "../plutus.json"
+// getPlutusData
+import {getPlutusScript} from "./contract.js"
+import {getValidators, lucidAPI} from "./util.js"
 import {
   Data,
   fromText,
@@ -18,7 +20,7 @@ const contracts = [
     validator: 'whirl.merkle_minter',
   },
 ]
-const Validators = getValidators(contracts, contract)
+const Validators = getValidators(contracts, getPlutusScript())
 
 // #############################################################################
 // ## MINT TOKEN
