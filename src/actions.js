@@ -1,11 +1,12 @@
 // import type {contract} from "../plutus.json"
 // getPlutusData
 import {getPlutusScript} from "./contract.js"
-import {getValidators, lucidAPI} from "./util.js"
+import {getValidators} from "./util.js"
 import {
   Data,
   fromText,
   Constr,
+  paymentCredentialOf
 } from "lucid-cardano";
 
 const VERBOSE = true;
@@ -25,15 +26,10 @@ const Validators = getValidators(contracts, getPlutusScript())
 // #############################################################################
 // ## MINT TOKEN
 // #############################################################################
-export const mint_token = async (wallet) => {
+export const mint_token = async (lucid) => {
 
-  if (VERBOSE) { console.log({
-    "wallet": wallet,
-    })
-  }
-
-  // Initialize Lucid ----------------------------------------------------------
-  const lucid = await lucidAPI(wallet)
+  const user_address = await lucid.wallet.address()
+  console.log('INFO: User address:', user_address)
 
   // Parameterize Contracts ----------------------------------------------------
   if (VERBOSE) { console.log("INFO: Parameterizing Contracts"); }
@@ -76,15 +72,15 @@ export const mint_token = async (wallet) => {
   if (VERBOSE) { console.log("INFO: Building the TX"); }
   const tx = await lucid.newTx()
   .payToAddress(
-    wallet.userAddress, 
+    user_address, 
     { 
       [asset_token1]: BigInt(quantity_token1)
     },
   ) 
   .mintAssets({[asset_token1]: BigInt(quantity_token1)}, mintRedeemer1)
-  .attachMintingPolicy(Validator_Mint)
+  .attachMintingPolicy(Validator_Mint1)
   .attachMetadata(721n, metaDatum)
-  .addSigner(wallet.userAddress)
+  .addSigner(user_address)
   .complete();
   if (VERBOSE) { console.log("INFO: Raw TX 1", tx.toString()); }
 
@@ -103,7 +99,7 @@ export const mint_token = async (wallet) => {
 
   // Mint Action
 
-  const output_ref = paymentCredentialOf(wallet.userAddress).hash  // TO DO -- not correct
+  const output_ref = paymentCredentialOf(user_address).hash  // TO DO -- not correct
   const txBodyPiecesStructure = Data.Object({
     metadata_hash: Data.Bytes(),
     collateral_inputs: Data.Bytes(),
@@ -112,11 +108,11 @@ export const mint_token = async (wallet) => {
     collateral_fee: Data.Bytes(),
   })
   const txBodyPieces = Data.to({ // TEMPORARY DATA
-    metadata_hash: paymentCredentialOf(wallet.userAddress).hash, 
-    collateral_inputs: paymentCredentialOf(wallet.userAddress).hash,
-    network_id: paymentCredentialOf(wallet.userAddress).hash,
-    collateral_outputs: paymentCredentialOf(wallet.userAddress).hash,
-    collateral_fee: paymentCredentialOf(wallet.userAddress).hash,
+    metadata_hash: paymentCredentialOf(user_address).hash, 
+    collateral_inputs: paymentCredentialOf(user_address).hash,
+    network_id: paymentCredentialOf(user_address).hash,
+    collateral_outputs: paymentCredentialOf(user_address).hash,
+    collateral_fee: paymentCredentialOf(user_address).hash,
     }, txBodyPiecesStructure
   )
   const metaDatumStructure = Data.Object({
@@ -124,8 +120,8 @@ export const mint_token = async (wallet) => {
     description: Data.Bytes(),
   })
   const metadata = Data.to({
-    name: paymentCredentialOf(wallet.userAddress).hash,
-    description: paymentCredentialOf(wallet.userAddress).hash,
+    name: paymentCredentialOf(user_address).hash,
+    description: paymentCredentialOf(user_address).hash,
   }, metaDatumStructure
   )
 
@@ -138,7 +134,7 @@ export const mint_token = async (wallet) => {
     amnt: Data.Integer(),
   })
   const scriptDatum = Data.to({
-    credential: paymentCredentialOf(wallet.userAddress).hash, 
+    credential: paymentCredentialOf(user_address).hash, 
     amnt: BigInt(1)
     }, scriptDatumStructure
   )
@@ -154,7 +150,7 @@ export const mint_token = async (wallet) => {
     },
   ) 
   .payToAddress(
-    wallet.userAddress, 
+    user_address, 
     { 
       [asset_token2]: BigInt(quantity_token2)
     },
@@ -162,7 +158,7 @@ export const mint_token = async (wallet) => {
   .mintAssets({[asset_token2]: BigInt(quantity_token2)}, mintRedeemer2)
   .attachMintingPolicy(Validator_Mint2)
   .attachMetadata(721n, metaDatum)
-  .addSigner(wallet.userAddress)
+  .addSigner(user_address)
   .complete();
   if (VERBOSE) { console.log("INFO: Raw TX 2", tx2.toString()); }
 

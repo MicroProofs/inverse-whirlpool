@@ -1,21 +1,18 @@
+import 'dotenv/config';
 import {
   Blockfrost, 
   Lucid, 
 } from "lucid-cardano";
 
 // Initialize Lucid ------------------------------------------------------------
-export const lucidAPI = async (wallet) => {
+export const api_blockfrost = async (network, wallet) => {
 
-  let network_id = wallet.networkId
-  let network
   let key
 
-  if (network_id == 0) {
-    network = "Preview"
-    key =  process.env.VUE_APP_BLOCKFROST_PREVIEW
-  } else if (network_id == 1) {
-    network = "Mainnet"
-    key =  process.env.VUE_APP_BLOCKFROST_MAINNET
+  if (network == "Preview") {
+    key =  process.env.BLOCKFROST_PREVIEW
+  } else if (network == "Mainnet") {
+    key =  process.env.BLOCKFROST_PREVIEW
   } else {
     return
   }
@@ -27,7 +24,7 @@ export const lucidAPI = async (wallet) => {
       network,
   );
 
-  return api.selectWallet(wallet.API);
+  return api;
 }
 
 // Retrieve validators from plutus.json ----------------------------------------
