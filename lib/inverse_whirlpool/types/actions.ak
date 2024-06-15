@@ -1,11 +1,5 @@
 use aiken/transaction.{OutputReference}
 
-// Mint validator to issue/burn collateral token
-pub type MintActions {
-  InitialToken { action: MintActionType }
-  VendingToken { action: MintActionType }
-}
-
 pub type MintActionType {
   MintToken(OutputReference, TransactionBodyPieces, Metadata)
   BurnToken
@@ -20,8 +14,6 @@ pub type TransactionBodyPieces {
   metadata_hash: ByteArray,
   /// 13: set<transaction_input>
   collateral_inputs: ByteArray,
-  /// 15: network_id
-  network_id: ByteArray,
   /// 16: transaction_output
   collateral_output: ByteArray,
   /// 17: coin

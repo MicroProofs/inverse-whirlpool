@@ -1,5 +1,6 @@
 use aiken/builtin
 use aiken/bytearray
+use aiken/cbor
 use aiken/dict
 use aiken/hash
 use aiken/list
@@ -14,7 +15,13 @@ use aiken/transaction/credential.{
   Address, Inline, ScriptCredential, VerificationKeyCredential,
 }
 use aiken/transaction/value.{PolicyId}
-use inverse_whirlpool/types/actions.{BurnToken, MintActionType, MintToken}
+use inverse_whirlpool/conversion.{
+  convert_extra_signatories, convert_fee, convert_inputs, convert_mint,
+  convert_outputs,
+}
+use inverse_whirlpool/types/actions.{
+  BurnToken, MintActionType, MintToken, TransactionBodyPieces,
+}
 use inverse_whirlpool/utils.{get_inline_datum, list_at, skip_to}
 use inverse_whirlpool/validation.{
   Account, BurnAccount, CreateAccount, DestroyAccount, IncrementAccount,
@@ -206,11 +213,19 @@ validator(init_ref: OutputReference) {
   }
 }
 
-validator(merkle_policy: PolicyId) {
-  fn mint(action: MintActionType, context: ScriptContext) -> Bool {
+validator {
+  fn mint(action: Data, context: ScriptContext) -> Bool {
     let ScriptContext { transaction, purpose } = context
-    let Transaction { inputs, outputs, extra_signatories, mint, .. } =
-      transaction
+    let Transaction {
+      inputs,
+      outputs,
+      extra_signatories,
+      mint,
+      reference_inputs,
+      fee,
+      id,
+      ..
+    } = transaction
 
     // Expect that the tx is minting
     expect Mint(script_policy_id) = purpose
@@ -220,6 +235,10 @@ validator(merkle_policy: PolicyId) {
     let mint = value.from_minted_value(mint)
 
     trace @"Mint Preamble Complete"
+
+    trace cbor.diagnostic(action)
+
+    expect action: MintActionType = action
 
     when action is {
       BurnToken ->
@@ -231,32 +250,83 @@ validator(merkle_policy: PolicyId) {
           },
         )
       MintToken(input_ref, tx_body, metadata) -> {
-        expect Some(input) =
-          list.find(inputs, fn(input) { input_ref == input.output_reference })
+        let TransactionBodyPieces {
+          metadata_hash,
+          collateral_inputs,
+          collateral_output,
+          collateral_fee,
+        } = tx_body
 
-        let Input { output: Output { value, datum, .. }, .. } = input
-        expect Account(credential, amount): State = get_inline_datum(datum)
+        expect [Pair(script_data_hash, 1), ..] =
+          mint
+            |> value.tokens(
+                #"9fc33a6ffaa8d1f600c161aa383739d5af37807ed83347cc133521c9",
+              )
+            |> dict.to_pairs
 
-        let expected_value =
-          value.from_asset(
-            merkle_policy,
-            credential |> builtin.serialise_data |> hash.blake2b_256,
-            1,
-          )
+        let inputs_cbor = convert_inputs(inputs) |> bytearray.concat(#"00", _)
+        let outputs_cbor =
+          convert_outputs(outputs) |> bytearray.concat(#"01", _)
+        let fee_cbor = convert_fee(fee) |> bytearray.concat(#"02", _)
+        let mint_cbor = convert_mint(mint) |> bytearray.concat(#"09", _)
 
+        let script_data_hash_cbor =
+          builtin.serialise_data(script_data_hash) |> bytearray.concat(#"0b", _)
+
+        let extra_signatories_cbor =
+          convert_extra_signatories(extra_signatories)
+            |> bytearray.concat(#"0e", _)
+        let ref_inputs_cbor =
+          convert_inputs(reference_inputs) |> bytearray.concat(#"12", _)
+
+        let collateral_inputs_cbor = bytearray.concat(#"0d", collateral_inputs)
+
+        let collateral_output_cbor = bytearray.concat(#"10", collateral_output)
+        let collateral_fee_cbor = bytearray.concat(#"11", collateral_fee)
+
+        let tx_cbor =
+          #"a9"
+            |> bytearray.concat(inputs_cbor)
+            |> bytearray.concat(outputs_cbor)
+            |> bytearray.concat(fee_cbor)
+            |> bytearray.concat(mint_cbor)
+            |> bytearray.concat(script_data_hash_cbor)
+            |> bytearray.concat(collateral_inputs_cbor)
+            |> bytearray.concat(extra_signatories_cbor)
+            |> bytearray.concat(collateral_output_cbor)
+            |> bytearray.concat(collateral_fee_cbor)
+
+        trace @"INFO CBOR SERIALIZED TX:"
+        trace bytearray.to_hex(tx_cbor)
+
+        trace tx_cbor |> builtin.blake2b_256 |> bytearray.to_hex
+
+        trace bytearray.to_hex(id.hash)
+
+        // expect Some(input) =
+        //   list.find(inputs, fn(input) { input_ref == input.output_reference })
+        // let Input { output: Output { value, datum, .. }, .. } = input
+        // expect Account(credential, amount): State = get_inline_datum(datum)
+        // let expected_value =
+        //   value.from_asset(
+        //     merkle_policy,
+        //     credential |> builtin.serialise_data |> hash.blake2b_256,
+        //     1,
+        //   )
         expect [Pair(token_name, 1)] =
           mint |> value.tokens(script_policy_id) |> dict.to_pairs
 
-        and {
-          expected_value == value.without_lovelace(value),
-          token_name == (
-            credential
-              |> builtin.serialise_data
-              |> bytearray.concat(amount |> builtin.serialise_data)
-              |> hash.blake2b_256
-          ),
-        }
+        id.hash != (tx_cbor |> builtin.blake2b_256)
       }
     }
+    // and {
+    //   expected_value == value.without_lovelace(value),
+    //   token_name == (
+    //     credential
+    //       |> builtin.serialise_data
+    //       |> bytearray.concat(amount |> builtin.serialise_data)
+    //       |> hash.blake2b_256
+    //   ),
+    // }
   }
 }

@@ -8,8 +8,8 @@ use aiken/option
 use aiken/pairs
 use aiken/sparse_merkle_tree_blake256.{verify_added_member}
 use aiken/transaction.{
-  DatumHash, InlineDatum, Input, Mint, NoDatum, Output, OutputReference,
-  ScriptContext, Spend, Transaction, Datum
+  Datum, DatumHash, InlineDatum, Input, Mint, NoDatum, Output, OutputReference,
+  ScriptContext, Spend, Transaction,
 }
 use aiken/transaction/credential.{
   Address, Inline, ScriptCredential, VerificationKeyCredential,
@@ -19,7 +19,7 @@ use inverse_whirlpool/utils.{get_inline_datum, list_at, skip_to}
 
 pub fn convert_inputs(inputs: List<Input>) -> ByteArray {
   let (length, bytes) =
-    list.foldl(
+    list.foldr(
       inputs,
       (0, ""),
       fn(input, acc) {
@@ -27,7 +27,7 @@ pub fn convert_inputs(inputs: List<Input>) -> ByteArray {
 
         (
           acc.1st + 1,
-          bytearray.concat(#"82", builtin.serialise_data(hash))
+          bytearray.concat(#"82", builtin.serialise_data(hash.hash))
             |> bytearray.concat(builtin.serialise_data(index))
             |> bytearray.concat(acc.2nd),
         )
@@ -47,7 +47,7 @@ pub fn convert_mint(mint: Value) -> ByteArray {
 
 pub fn convert_outputs(outputs: List<Output>) -> ByteArray {
   let (length, bytes) =
-    list.foldl(
+    list.foldr(
       outputs,
       (0, ""),
       fn(output, acc) {
@@ -56,7 +56,7 @@ pub fn convert_outputs(outputs: List<Output>) -> ByteArray {
         let (add_datum, datum_bytes) = convert_datum(datum)
         (
           acc.1st + 1,
-          builtin.cons_bytearray( 130 + add_datum, convert_address(address))
+          builtin.cons_bytearray(130 + add_datum, convert_address(address))
             |> bytearray.concat(convert_value(value))
             |> bytearray.concat(datum_bytes)
             |> bytearray.concat(acc.2nd),
@@ -71,19 +71,19 @@ pub fn convert_outputs(outputs: List<Output>) -> ByteArray {
   }
 }
 
-fn convert_fee(fee: Value) -> ByteArray {
+pub fn convert_fee(fee: Value) -> ByteArray {
   value.lovelace_of(fee) |> builtin.serialise_data
 }
 
-fn convert_extra_signatories(signatures: List<ByteArray>) -> ByteArray {
+pub fn convert_extra_signatories(signatures: List<ByteArray>) -> ByteArray {
   let (length, bytes) =
-    list.foldl(
+    list.foldr(
       signatures,
       (0, ""),
       fn(signature, acc) {
         (
           acc.1st + 1,
-          bytearray.concat(builtin.serialise_data(signature), acc.2nd)
+          bytearray.concat(builtin.serialise_data(signature), acc.2nd),
         )
       },
     )
@@ -107,7 +107,7 @@ fn convert_value(assets: Value) -> ByteArray {
   let multi_asset = value.without_lovelace(assets) |> builtin.serialise_data
 
   if multi_asset == #"a0" {
-    #"81" |> bytearray.concat(lovelace)
+    lovelace
   } else {
     #"82" |> bytearray.concat(lovelace) |> bytearray.concat(multi_asset)
   }
@@ -131,10 +131,8 @@ fn convert_address(address: Address) -> ByteArray {
     header_byte_pc + header_byte_sc,
     bytearray.concat(credential_p, credential_s),
   )
+    |> builtin.serialise_data
 }
-
-// test convert_inputs_1() {
-// }
 
 // test foo() {
 //   trace cbor.diagnostic(#"aabbccddeeff")
