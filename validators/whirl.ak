@@ -316,7 +316,7 @@ validator {
         expect [Pair(token_name, 1)] =
           mint |> value.tokens(script_policy_id) |> dict.to_pairs
 
-        id.hash != (tx_cbor |> builtin.blake2b_256)
+        id.hash != ( tx_cbor |> builtin.blake2b_256 )
       }
     }
     // and {
