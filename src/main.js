@@ -6,40 +6,36 @@ import { api_blockfrost } from './util.js';
 import { generateSeedPhrase } from "lucid-cardano";
 import fs from 'fs';
 
-// Config: Provider Options ---------------------------------------------------
-  // const kupoUrlOption = new Option('-k, --kupo-url <string>', 'Kupo URL')
-  //   .env('KUPO_URL')
-  //   .makeOptionMandatory(true);
-  // const ogmiosUrlOption = new Option('-o, --ogmios-url <string>', 'Ogmios URL')
-  //   .env('OGMIOS_URL')
-  //   .makeOptionMandatory(true);
-  // const blockfrostUrlOption = new Option('-b, --blockfrost-url <string>', 'Blockfrost URL')
-  //   .env('BLOCKFROST_URL')
-  //   .makeOptionMandatory(true);
+// Config: Option Flags --------------------------------------------------------
+const kupoUrlOption = new Option('-k, --kupo-url <string>', 'Kupo URL')
+  .env('KUPO_URL')
+  .makeOptionMandatory(false);
+const ogmiosUrlOption = new Option('-o, --ogmios-url <string>', 'Ogmios URL')
+  .env('OGMIOS_URL')
+  .makeOptionMandatory(false);
+const blockfrostUrlOption = new Option('-b, --blockfrost-url <string>', 'Blockfrost URL')
+  .env('BLOCKFROST_URL')
+  .makeOptionMandatory(false);
 const previewOption = new Option('-p, --preview', 'Use testnet').default(true);
-
 
 // App -------------------------------------------------------------------------
 const app = new Command();
 app.name('minter').description('Inverse Whirlpool Minter').version('0.0.1');
 
-// App Comment: Mint -----------------------------------------------------------
+// App Command: Mint -----------------------------------------------------------
 // Executes the mint action
-
-  // .addOption(kupoUrlOption)
-  // .addOption(ogmiosUrlOption)
-
 app
   .command('mint')
   .description('Mints a token with a verifiable metadata hash')
-  .addOption(previewOption)
+  .addOption(previewOption)            // Network
+  .addOption(blockfrostUrlOption)      // Provider Option
+  .addOption(kupoUrlOption)            // Provider Option
+  .addOption(ogmiosUrlOption)          // Provider Option
   .action(async ({ preview }) => {
 
     // Set up wallet API and provider API to broadcast the built TX
-    //const provider = new Kupmios(kupoUrl, ogmiosUrl);
     // const provider = new Kupmios(kupoUrl, ogmiosUrl);
     const lucid = await api_blockfrost(preview ? 'Preview' : 'Mainnet' )
-    //const lucid = await Lucid.new(provider, preview ? 'Preview' : 'Mainnet');
     await lucid.selectWalletFromSeed(fs.readFileSync('seed.txt', { encoding: 'utf-8' }));
 
     // Try to execute the TX
@@ -50,7 +46,9 @@ app
     }
   });
 
-  app
+// App Command: Initialize Wallet ----------------------------------------------
+// Generates a new wallet
+app
   .command('init')
   .description('Initialize a minting ')
   .action(() => {
@@ -64,4 +62,4 @@ app
     console.log(`For testnet faucet, visit: https://docs.cardano.org/cardano-testnets/tools/faucet/`);
   });
 
-  app.parse();
+app.parse();

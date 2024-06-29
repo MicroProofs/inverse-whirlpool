@@ -5,7 +5,7 @@ import {
 } from "lucid-cardano";
 
 // Initialize Lucid ------------------------------------------------------------
-export const api_blockfrost = async (network, wallet) => {
+export const api_blockfrost = async (network) => {
 
   let key
 
