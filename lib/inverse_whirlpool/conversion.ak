@@ -1,21 +1,13 @@
 use aiken/builtin
 use aiken/bytearray
-use aiken/cbor
-use aiken/dict
-use aiken/hash
 use aiken/list
-use aiken/option
-use aiken/pairs
-use aiken/sparse_merkle_tree_blake256.{verify_added_member}
 use aiken/transaction.{
-  Datum, DatumHash, InlineDatum, Input, Mint, NoDatum, Output, OutputReference,
-  ScriptContext, Spend, Transaction,
+  Datum, DatumHash, InlineDatum, Input, NoDatum, Output, OutputReference,
 }
 use aiken/transaction/credential.{
   Address, Inline, ScriptCredential, VerificationKeyCredential,
 }
-use aiken/transaction/value.{PolicyId, Value}
-use inverse_whirlpool/utils.{get_inline_datum, list_at, skip_to}
+use aiken/transaction/value.{Value}
 
 pub fn convert_inputs(inputs: List<Input>) -> ByteArray {
   let (length, bytes) =
@@ -132,49 +124,4 @@ fn convert_address(address: Address) -> ByteArray {
     bytearray.concat(credential_p, credential_s),
   )
     |> builtin.serialise_data
-}
-
-// test foo() {
-//   trace cbor.diagnostic(#"aabbccddeeff")
-//   trace cbor.serialise(#"aabbccddeeff") |> bytearray.to_hex()
-
-//   trace cbor.diagnostic(
-//     #"aabbccddeeffaabbccddeeffaabbccddeeffaabbccddeeffaabbccddeeffaabb",
-//   )
-//   trace cbor.serialise(
-//     #"aabbccddeeffaabbccddeeffaabbccddeeffaabbccddeeffaabbccddeeffaabb",
-//   )
-//     |> bytearray.to_hex()
-
-//   trace cbor.diagnostic(
-//     (#"aabbccddeeffaabbccddeeffaabbccddeeffaabbccddeeffaabbccddeeffaabb", 256),
-//   )
-//   trace cbor.serialise(
-//     (#"aabbccddeeffaabbccddeeffaabbccddeeffaabbccddeeffaabbccddeeffaabb", 256),
-//   )
-//     |> bytearray.to_hex()
-
-//   True
-// }
-
-test foo2() {
-  trace [
-    Pair(#"00e568406499afa042fd1f34207d1d5b4a3d87ec2767ccfd7b5e087d",
-    [
-      Pair(#"4465706f7369746f7279204e6f7465", -1),
-      Pair(#"624b47304a386b61525a4f34785a7432673670415267", 1),
-    ]),
-  ]
-    |> cbor.diagnostic
-  trace [
-    Pair(#"00e568406499afa042fd1f34207d1d5b4a3d87ec2767ccfd7b5e087d",
-    [
-      Pair(#"4465706f7369746f7279204e6f7465", -1),
-      Pair(#"624b47304a386b61525a4f34785a7432673670415267", 1),
-    ]),
-  ]
-    |> builtin.serialise_data
-    |> bytearray.to_hex
-
-  True
 }

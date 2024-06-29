@@ -14,7 +14,7 @@ use aiken/transaction.{
 use aiken/transaction/credential.{
   Address, Inline, ScriptCredential, VerificationKeyCredential,
 }
-use aiken/transaction/value.{PolicyId}
+use aiken/transaction/value
 use inverse_whirlpool/conversion.{
   convert_extra_signatories, convert_fee, convert_inputs, convert_mint,
   convert_outputs,
@@ -249,7 +249,7 @@ validator {
             amount == -1
           },
         )
-      MintToken(input_ref, tx_body, metadata) -> {
+      MintToken(_, tx_body, _) -> {
         let TransactionBodyPieces {
           metadata_hash,
           collateral_inputs,
