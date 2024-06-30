@@ -216,16 +216,8 @@ validator(init_ref: OutputReference) {
 validator {
   fn mint(action: Data, context: ScriptContext) -> Bool {
     let ScriptContext { transaction, purpose } = context
-    let Transaction {
-      inputs,
-      outputs,
-      extra_signatories,
-      mint,
-      reference_inputs,
-      fee,
-      id,
-      ..
-    } = transaction
+    let Transaction { inputs, outputs, extra_signatories, mint, fee, id, .. } =
+      transaction
 
     // Expect that the tx is minting
     expect Mint(script_policy_id) = purpose
@@ -251,10 +243,10 @@ validator {
         )
       MintToken(_, tx_body, _) -> {
         let TransactionBodyPieces {
-          metadata_hash,
           collateral_inputs,
           collateral_output,
           collateral_fee,
+          ..
         } = tx_body
 
         expect [Pair(script_data_hash, 1), ..] =
@@ -276,9 +268,9 @@ validator {
         let extra_signatories_cbor =
           convert_extra_signatories(extra_signatories)
             |> bytearray.concat(#"0e", _)
-        let ref_inputs_cbor =
-          convert_inputs(reference_inputs) |> bytearray.concat(#"12", _)
 
+        // let _ref_inputs_cbor =
+        //  convert_inputs(reference_inputs) |> bytearray.concat(#"12", _)
         let collateral_inputs_cbor = bytearray.concat(#"0d", collateral_inputs)
 
         let collateral_output_cbor = bytearray.concat(#"10", collateral_output)
@@ -316,7 +308,10 @@ validator {
         expect [Pair(token_name, 1)] =
           mint |> value.tokens(script_policy_id) |> dict.to_pairs
 
-        id.hash != ( tx_cbor |> builtin.blake2b_256 )
+        and {
+          id.hash != ( tx_cbor |> builtin.blake2b_256 ),
+          token_name == token_name,
+        }
       }
     }
     // and {
